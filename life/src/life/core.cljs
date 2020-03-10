@@ -8,8 +8,8 @@
 (ns life.core
   (:require [clojure.string :as str]))
 
-(def rows 50)
-(def cols 50)
+(def rows 30)
+(def cols 30)
 (def reproductionTime 200)
 
 (def states ["dead" "alive" "born" "add"]) 
@@ -188,7 +188,10 @@
 
 ;; Initialize
 (defn initialize [r c]
-　(let [init (make-array Integer/TYPE r c) g (atom init)]
+　(let [ init
+          (vec (for [i (range 0 r)]
+　　　　　　　(vec (for [j (range 0 c)] state-dead))))
+　　　　　g (atom init) ]
 　　(do
 　　　(createGc g r c)
 　　　(setupControlButtons g init r c))))
