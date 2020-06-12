@@ -80,7 +80,6 @@
 　　　　　3 STATE-BORN
 　　　　　STATE-DEAD))))
 
-
 　　;; copy all 1 values to "live" in the table
 　　(updateView g m n)))
 
