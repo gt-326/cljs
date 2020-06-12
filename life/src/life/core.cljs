@@ -1,24 +1,26 @@
-;---
-; Inspired by the Game of Life  that have gone before:
-;
-; Robert Spatz's Game of Life - JavaScript: https://codepen.io/RBSpatz/pen/rLyNLb
-;
-;---
+;;---
+;; Inspired by the Game of Life  that have gone before:
+;;
+;; Robert Spatz's Game of Life - JavaScript: https://codepen.io/RBSpatz/pen/rLyNLb
+;;
+;;---
 
 (ns life.core
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str] [life.util :as util]))
 
-(def rows 30)
-(def cols 30)
-(def reproductionTime 200)
+;;=== Const  ====================
 
-(def states ["dead" "alive" "born" "add"]) 
-(def state-dead 0)
-(def state-born 1)
-(def state-alive 2)
-(def state-add 3)
+(def ROWS 30)
+(def COLS 30)
+(def RE-PRODUCTION-TIME 200)
 
-(def sep-char "-")
+(def STATES ["dead" "alive" "born" "add"]) 
+(def STATE-DEAD 0)
+(def STATE-BORN 1)
+(def STATE-ALIVE 2)
+(def STATE-ADD 3)
+
+(def SEP-CHAR "-")
 
 ;;=== Utility fnc  ====================
 
@@ -32,16 +34,16 @@
 　(.appendChild obj (.createElement js/document type)))
 
 (defn isAttributeClassDead? [obj]
-  (= (.getAttribute obj "class") (get states state-dead)))
+　(= (.getAttribute obj "class") (get STATES STATE-DEAD)))
 
 (defn setAttribute [obj param val]
 　(.setAttribute obj param val))
 
 (defn setObjectAttributeClass [obj idx]
-　(setAttribute obj "class" (get states idx)))
+　(setAttribute obj "class" (get STATES idx)))
 
 (defn setCellAttributeClass [i j idx]
-　(setObjectAttributeClass (getHtmlElementById (str i sep-char j)) idx))
+　(setObjectAttributeClass (getHtmlElementById (str i SEP-CHAR j)) idx))
 
 ;;=== Button event etc ================
 
@@ -53,56 +55,49 @@
 
 (defn cntNeighbors [g row col m_row m_col]
 　(let [neighbors [[-1 -1] [0 -1] [1 -1] [1 0] [1 1] [0 1] [-1 1] [-1 0]]]
-　　(count
-　　　(remove zero? (for [[i j] neighbors :let [h (+ row i) w (+ col j)]]
-　　　　(if (or (< h 0) (< w 0) (>= h m_row) (>= w m_col))
-　　　　　state-dead
-　　　　　(get-in @g [h w])))))))
+　　(count (remove zero?
+　　　(for [[i j] neighbors :let [h (+ row i) w (+ col j)]]
+　　　　(if (and (< 0 h m_row) (< 0 w m_col))
+　　　　　(get-in @g [h w])
+　　　　　STATE-DEAD))))))
 
 (defn updateView [g m n]
-　(letfn [(fnc []
-　　(for [i (range 0 m)]
-　　　(for [j (range 0 n)]
+　;; Does anyone know how to display result without using .log ?
+　(.log js/console (str "updateView:" (util/nested-vector m n
+　　(fn [i j &　_]
+　　　(let [stat (get-in @g [i j])]
 　　　　(do
-　　　　　(setCellAttributeClass i j (get-in @g [i j]))
-　　　　　(str i sep-char j)))))]
-
-　　;; Does anyone know how to display result without using .log ?
-　　(.log js/console (str "updateView:" (fnc)))))
+　　　　　(setCellAttributeClass i j stat)
+　　　　　stat)))))))
 
 (defn computeNextGen [g m n]
-　(let [state-next
-　　(vec (for [i (range 0 m)]
-　　　(vec (for [j (range 0 n) :let [numNeighbors (cntNeighbors g i j m n)]]
-　　　　(cond
-　　　　　(= numNeighbors 2) (if (= (get-in @g [i j]) state-dead) state-dead state-alive)
-　　　　　(= numNeighbors 3) state-born
-　　　　　:else state-dead)))))]
-　　(do
-　　　;; copy state-next to grid
-　　　(reset! g state-next)
-　　　;; copy all 1 values to "live" in the table
-　　　(updateView g m n))))
+　(do
+　　;; copy state-next to grid
+　　(reset! g (util/nested-vector m n
+　　　(fn [i j m n]
+　　　　(case (cntNeighbors g i j m n)
+　　　　　2 (if (= (get-in @g [i j]) STATE-DEAD) STATE-DEAD STATE-ALIVE)
+　　　　　3 STATE-BORN
+　　　　　STATE-DEAD))))
+
+
+　　;; copy all 1 values to "live" in the table
+　　(updateView g m n)))
 
 (defn play [playing timer g m n]
 　(if @playing
 　　(do
 　　　(computeNextGen g m n)
-　　　(reset! timer (js/setTimeout (fn [] (play playing timer g m n)) reproductionTime)))))
+　　　(reset! timer (js/setTimeout #(play playing timer g m n) RE-PRODUCTION-TIME)))))
 
 ;; start game
 (defn startButtonHandler [playing timer g obj m n]
-　(if @playing
+　(let [flg @playing]
 　　(do
-　　　(.log js/console "Pause the game")
-　　　(reset! playing false)
-　　　(set! (.-innerHTML obj) "Restart")
-　　　(.clearTimeout js/window @timer))
-　　(do
-　　　(.log js/console "Continue the game")
-　　　(reset! playing true)
-　　　(set! (.-innerHTML obj) "Stop")
-　　　(play playing timer g m n))))
+　　　(.log js/console (if flg "Pause the game" "Continue the game"))
+　　　(reset! playing (not flg))
+　　　(set! (.-innerHTML obj) (if flg "Restart" "Stop"))
+　　　(if flg (.clearTimeout js/window @timer) (play playing timer g m n)))))
 
 ;; clear the grid
 (defn clearButtonHandler [playing timer g init m n]
@@ -111,17 +106,11 @@
 　　(reset! playing false)
 　　(set! (.-innerHTML (getHtmlElementById "start")) "Start")
 　　(.clearTimeout js/window @timer)
-
-　　(letfn [(fnc []
-　　　(for [i (range 0 m)]
-　　　　(for [j (range 0 n)]
-　　　　　(setCellAttributeClass i j state-dead))))]
-
-　　　;; Does anyone know how to display result without using .log ?
-　　　(.log js/console (str "grid_dead:" (fnc))))
-
-　　　;; init grid
-　　　(reset! g init)))
+　　;; init grid
+　　(reset! g init)
+　　;; Does anyone know how to display result without using .log ?
+　　(.log js/console (str "grid_dead:" (util/nested-vector m n
+　　　(fn [i j & _] (do (setCellAttributeClass i j STATE-DEAD) STATE-DEAD)))))))
 
 ;; calc random value
 (defn randomButtonHandler [playing timer g init m n]
@@ -129,72 +118,56 @@
 　　(do
 　　　;; clear Grid
 　　　(clearButtonHandler playing timer g init m n)
-
-　　　(let [state-new
-　　　　(vec (for [i (range 0 m)]
-　　　　　(vec (for [j (range 0 n)] (.round js/Math (js/Math.random))))))]
+　　　;; init grid randomValue
+　　　(reset! g (util/nested-vector m n #(.round js/Math (js/Math.random))))
+　　　;; Does anyone know how to display result without using .log ?
+　　　(.log js/console (str "state:" (util/nested-vector m n
+　　　　(fn [i j & _]
+　　　　　(let [stat (get-in @g [i j])]
 　　　　　　(do
-　　　　　　　;; init grid randomValue
-　　　　　　　(reset! g state-new)
-
-　　　　　　　(letfn [(fnc [state-array]
-　　　　　　　　(for [i (range 0 m)]
-　　　　　　　　　(for [j (range 0 n) :when (= (get-in state-array [i j]) state-born)]
-　　　　　　　　　　(setCellAttributeClass i j state-alive))))]
-
-　　　　　　　　;; Does anyone know how to display result without using .log ?
-　　　　　　　　;; NG (fnc state-new)
-　　　　　　　　;; NG (.log js/console (count (fnc state-new)))
-　　　　　　　　(.log js/console (str "state:" (fnc state-new)))))))))
+　　　　　　　(if (= stat STATE-BORN) (setCellAttributeClass i j STATE-ALIVE))
+　　　　　　　stat)))))))))
 
 ;;=== Grid cell click event ===========
 
-(defn cellClickHandler [i j g obj]
-　(if (isAttributeClassDead? obj)
+(defn cellClickHandler [idx g obj]
+  (let [flg (isAttributeClassDead? obj)]
 　　(do
-　　　(reset! g (assoc-in @g [i j] state-alive))
-　　　(setObjectAttributeClass obj state-add))
-　　(do
-　　　(reset! g (assoc-in @g [i j] state-dead))
-　　　(setObjectAttributeClass obj state-dead))))
+　　　(reset! g (assoc-in @g idx (if flg STATE-ALIVE STATE-DEAD)))
+　　　(setObjectAttributeClass obj (if flg STATE-ADD STATE-DEAD)))))
 
 ;;=== PageLoad etc ====================
 
 (defn createGc [g m n]
 　(let [gc (getHtmlElementById "gridContainer")]
 　　(if gc
-　　　(let [tbl (createHtmlElementAsChild gc "table")]
-　　　　(letfn [(fnc []
+　　　;; Does anyone know how to display result except .log ?
+　　　(.log js/console (str "tbl:"
+　　　　(let [tbl (createHtmlElementAsChild gc "table")]
 　　　　　(for [i (range 0 m) :let [tr (createHtmlElementAsChild tbl "tr")]]
 　　　　　　(for [j (range 0 n) :let [td (createHtmlElementAsChild tr "td")]]
 　　　　　　　(do
-　　　　　　　　(setAttribute td "id" (str i sep-char j))
-　　　　　　　　(setObjectAttributeClass td state-dead)
-　　　　　　　　(set! (.-onclick td) (fn [] (cellClickHandler i j g td)))))))]
-
-　　　;; Does anyone know how to display result except .log ?
-　　　(.log js/console (str "tbl:" (fnc))))))))
+　　　　　　　　(setAttribute td "id" (str i SEP-CHAR j))
+　　　　　　　　(setObjectAttributeClass td STATE-DEAD)
+　　　　　　　　(set! (.-onclick td) #(cellClickHandler [i j] g td)))))))))))
 
 (defn setupControlButtons [g init m n]
-　(let [ timer (atom nil)
-　　　　　flg (atom false)
+　(let [ flg (atom false)
+         timer (atom nil)
 　　　　　btn1 (getHtmlElementById "start")
 　　　　　btn2 (getHtmlElementById "clear")
 　　　　　btn3 (getHtmlElementById "random") ]
 　　(do
-　　　(set! (.-onclick btn1) (fn [] (startButtonHandler flg timer g btn1 m n)))
-　　　(set! (.-onclick btn2) (fn [] (clearButtonHandler flg timer g init m n)))
-　　　(set! (.-onclick btn3) (fn [] (randomButtonHandler flg timer g init m n))))))
+　　　(set! (.-onclick btn1) #(startButtonHandler flg timer g btn1 m n))
+　　　(set! (.-onclick btn2) #(clearButtonHandler flg timer g init m n))
+　　　(set! (.-onclick btn3) #(randomButtonHandler flg timer g init m n)))))
 
 ;; Initialize
 (defn initialize [r c]
-　(let [ init
-          (vec (for [i (range 0 r)]
-　　　　　　　(vec (for [j (range 0 c)] state-dead))))
-　　　　　g (atom init) ]
+　(let [init (util/nested-vector r c (fn [] STATE-DEAD)) g (atom init)]
 　　(do
 　　　(createGc g r c)
 　　　(setupControlButtons g init r c))))
 
 ;; Start everything
-(set! (.-onload js/window) (fn [] (initialize rows cols)))
+(set! (.-onload js/window) #(initialize ROWS COLS))
