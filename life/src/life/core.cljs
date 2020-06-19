@@ -14,7 +14,7 @@
 (def COLS 30)
 (def RE-PRODUCTION-TIME 200)
 
-(def STATES ["dead" "alive" "born" "add"]) 
+(def STATES ["dead" "born" "alive" "add"]) 
 (def STATE-DEAD 0)
 (def STATE-BORN 1)
 (def STATE-ALIVE 2)
@@ -149,7 +149,6 @@
 　　　　(fn [i j obj]
 　　　　　(do
 　　　　　　(setAttribute obj "id" (str i SEP-CHAR j))
-　　　　　　(setObjectAttributeClass obj STATE-DEAD)
 　　　　　　(set! (.-onclick obj) #(cellClickHandler [i j] g obj))))))))
 
 (defn setupControlButtons [g init]
