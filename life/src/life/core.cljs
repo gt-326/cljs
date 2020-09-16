@@ -66,9 +66,8 @@
   (util/console-log "updateView"
 　　(fn [i j]
 　　　(let [stat (get-in @g [i j])]
-　　　　(do
-　　　　　(setCellAttributeClass i j stat)
-　　　　　stat)))))
+　　　　(setCellAttributeClass i j stat)
+　　　　stat))))
 
 (defn computeNextGen [g]
 　(do
@@ -92,11 +91,10 @@
 ;; start game
 (defn startButtonHandler [playing timer g obj]
 　(let [flg @playing]
-　　(do
-　　　(util/console-log (if flg "Pause the game" "Continue the game"))
-　　　(reset! playing (not flg))
-　　　(set! (.-innerHTML obj) (if flg "Restart" "Stop"))
-　　　(if flg (.clearTimeout js/window @timer) (play playing timer g)))))
+　　(util/console-log (if flg "Pause the game" "Continue the game"))
+　　(reset! playing (not flg))
+　　(set! (.-innerHTML obj) (if flg "Restart" "Stop"))
+　　(if flg (.clearTimeout js/window @timer) (play playing timer g))))
 
 ;; clear the grid
 (defn clearButtonHandler [playing timer g init]
@@ -127,17 +125,15 @@
 　　　(util/console-log "state"
 　　　　(fn [i j]
 　　　　　(let [stat (get-in @g [i j])]
-　　　　　　(do
-　　　　　　　(if (= stat STATE-BORN) (setCellAttributeClass i j STATE-ALIVE))
-　　　　　　　stat)))))))
+　　　　　　(if (= stat STATE-BORN) (setCellAttributeClass i j STATE-ALIVE))
+　　　　　　stat))))))
 
 ;;=== Grid cell click event ===========
 
 (defn cellClickHandler [idx g obj]
   (let [flg (isAttributeClassDead? obj)]
-　　(do
-　　　(reset! g (assoc-in @g idx (if flg STATE-ALIVE STATE-DEAD)))
-　　　(setObjectAttributeClass obj (if flg STATE-ADD STATE-DEAD)))))
+　　(reset! g (assoc-in @g idx (if flg STATE-ALIVE STATE-DEAD)))
+　　(setObjectAttributeClass obj (if flg STATE-ADD STATE-DEAD))))
 
 ;;=== PageLoad etc ====================
 
@@ -157,17 +153,15 @@
 　　　　　btn1 (getHtmlElementById "start")
 　　　　　btn2 (getHtmlElementById "clear")
 　　　　　btn3 (getHtmlElementById "random") ]
-　　(do
-　　　(set! (.-onclick btn1) #(startButtonHandler flg timer g btn1))
-　　　(set! (.-onclick btn2) #(clearButtonHandler flg timer g init))
-　　　(set! (.-onclick btn3) #(randomButtonHandler flg timer g init)))))
+　　(set! (.-onclick btn1) #(startButtonHandler flg timer g btn1))
+　　(set! (.-onclick btn2) #(clearButtonHandler flg timer g init))
+　　(set! (.-onclick btn3) #(randomButtonHandler flg timer g init))))
 
 ;; Initialize
 (defn initialize []
 　(let [init (util/nested-vector (fn [] STATE-DEAD)) g (atom init)]
-　　(do
-　　　(createGc g)
-　　　(setupControlButtons g init))))
+　　(createGc g)
+　　(setupControlButtons g init)))
 
 ;; Start everything
 (set! (.-onload js/window) #(initialize))
