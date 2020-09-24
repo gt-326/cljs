@@ -1,0 +1,70 @@
+body {
+    padding: 20px;
+    background-color: #444;
+}
+
+#gridContainer {
+    padding-bottom: 10px;
+}
+
+table {
+    background-color: #C5D6C6;
+    border-spacing: 0;
+}
+
+td {
+    border: 1px solid #F1F5DA;
+    width: 10px;
+    height: 10px;
+}
+
+td.DEAD {
+    background-color: transparent;
+}
+
+td.alive {
+    background-color: #9b2b51;
+}
+
+td.I {
+    background-color: aqua;
+}
+
+td.O {
+    background-color: yellow;
+}
+
+td.S {
+    background-color: green;
+}
+
+td.Z {
+    background-color: red;
+}
+
+td.L {
+    background-color: blue;
+}
+
+td.J {
+    background-color: orange;
+}
+
+td.T {
+    background-color: purple;
+}
+
+span {
+    color: #222;
+}
+
+#start,
+#clear {
+    padding: .75em;
+    width: 65px;
+    border-radius: 5px;
+    border: none;
+    background: linear-gradient(
+        to bottom right,
+        #C5DEC6, #587559);
+}
