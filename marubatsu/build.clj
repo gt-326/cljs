@@ -20,8 +20,8 @@
 
 (require '[cljs.build.api])
 
-(cljs.build.api/build
- ;;cljs.build.api/watch
+(;;cljs.build.api/build
+ cljs.build.api/watch
  "src"
  {:main 'marubatsu.core
   ;;'marubatsu.core
