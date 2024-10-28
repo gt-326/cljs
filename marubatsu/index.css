@@ -1,0 +1,56 @@
+body {
+    padding: 20px;
+    background-color: #444;
+}
+
+#gridContainer {
+    padding-bottom: 10px;
+}
+
+table {
+    background-color: #C5D6C6;
+    border-spacing: 0;
+}
+
+td {
+    border: 1px solid #F1F5DA;
+    width: 100px;
+    height: 100px;
+
+    vertical-align: middle;
+    text-align: center;
+    font-weight: bold;
+    font-size: 50pt;
+}
+
+td.empty {
+    background-color: transparent;
+}
+
+td.alive {
+    background-color: #2d541c;
+}
+
+td.dying {
+    background-color:  #58a437;
+}
+
+span {
+    color: #222;
+}
+
+#undo,
+#quit,
+#restart {
+    padding: .75em;
+    width: 75px;
+    border-radius: 5px;
+    border: none;
+    background: linear-gradient(
+        to bottom right,
+        #C5DEC6, #587559);
+}
+
+#size{
+    width: 70px;
+}
