@@ -1,11 +1,18 @@
 (ns marubatsu.computer)
 
+;;=== Const  ====================
+
+(def TURN-HUMAN 1)
+(def TURN-COMPUTER 2)
+
+;;=== Utility fnc  ====================
+
 (defn canPutIdxes [board]
   (for [i (range (count board))
         :when (= 0 (board i))] i))
 
 (defn get_turn_next [turn]
-  ([1 2] (- 2 turn)))
+  ([TURN-HUMAN TURN-COMPUTER] (- TURN-COMPUTER turn)))
 
 (defn get-lines-to-win2 [lines board]
   (for [idx (canPutIdxes board)
@@ -39,7 +46,6 @@
       (recur
        (rest idxes)
        (update score (first idxes) inc)))))
-
 
 ;;=================
 
@@ -221,7 +227,6 @@
          lives-new (update-lives lives)
          ;; 2. update board
          board-new
-         ;;(update-board board lives-new 0)
          (update-board2 board lives-new #(= %1 0))
          ]
 

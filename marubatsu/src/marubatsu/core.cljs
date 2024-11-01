@@ -11,6 +11,9 @@
 (def STATE-ALIVE 1)
 (def STATE-DYING 2)
 
+(def TURN-HUMAN 1)
+(def TURN-COMPUTER 2)
+
 ;;=== Utility fnc  ====================
 
 (defn getHtmlElementById [id]
@@ -56,7 +59,7 @@
    ))
 
 (defn conv_to_OX [turn]
-  (if (= 1 turn) "O" "X"))
+  (if (= TURN-HUMAN turn) "O" "X"))
 
 (defn upd-status [board log turn current]
   (let [current-status (first current)]
@@ -77,6 +80,20 @@
     ;;  :l lives-new}
     current-status))
 
+
+(defn set-btn-disabled [flg]
+  (doseq [id ["undo" "quit"]
+          :let [btn (getHtmlElementById id)]]
+    ;; 色変え
+    (.setAttribute
+     btn "style"
+     (if flg
+       "background: #587559"
+       "background: linear-gradient(to bottom right, #C5DEC6, #587559"))
+    ;; 使用可、不可
+    (set! (.-disabled btn) flg))
+  )
+
 (defn show-result [info t-start turn cnt]
   (do
     ;; ゲーム終了表示
@@ -91,14 +108,8 @@
             :let [td (getHtmlElementById (str "td" idx))]]
       (set! (.-onclick td) nil))
 
-    ;; ボタン制御
-    (doseq [id ["undo" "quit"]
-            :let [btn (getHtmlElementById id)]]
-      ;; 色変え
-      (.setAttribute btn "style" "background: #587559")
-      ;; 使用不可
-      (set! (.-disabled btn) true))
-    ))
+    ;; ボタン制御：使用不可
+    (set-btn-disabled true)))
 
 (defn win2? [win-pttrns board opr size]
   (some
@@ -163,52 +174,46 @@
 ;;=== Grid cell click event ===========
 
 (defn cellClickHandler [idx board obj log win-pttrns turn size]
-  (ca/go-loop [cnt 0
-               t 1
-               i idx]
+  ;; クリックしたパネルが空欄のとき
+  (if (empty? (.-innerHTML obj))
+    (ca/go-loop [cnt 0
+                 t TURN-HUMAN
+                 i idx]
 
-    (if (< cnt 2)
-      (let [current
-            (first
-             (filter #(= i (:i (first %))) (rest @board)))
+      (if (< cnt 2)
+        (let [current
+              (first
+               (filter #(= i (:i (first %))) (rest @board)))
 
-            ;; 更新処理
-            b-print
-            (upd-status board log t current)]
+              ;; 更新処理
+              b-print
+              (upd-status board log t current)]
 
-        ;; ボード表示
-        (print-board b-print)
+          ;; ボード表示
+          (print-board b-print)
 
-        ;; ボタン制御
-        (let [flg (< (count @log) 1)]
-          (doseq [id ["undo" "quit"]
-                  :let [btn (getHtmlElementById id)]]
-            ;; 色変え
-            (.setAttribute
-             btn "style"
-             (if flg
-               "background: #587559"
-               "background: linear-gradient(to bottom right, #C5DEC6, #587559"))
-            ;; 使用可、不可
-            (set! (.-disabled btn) flg)))
+          (if (or (= 1 (inc turn) (count @log))
+                  (= 2 (inc turn) (count @log)))
+            ;; ボタン制御：使用可
+            (set-btn-disabled false))
 
-        ;; ゲーム終了判定
-        (if (win2? win-pttrns (:b b-print) #(= t %) size)
-          (do
-            (ca/<! (ca/timeout 1000))
-            (show-result b-print turn t (count @log)))
+          ;; ゲーム終了判定
+          (if (win2? win-pttrns (:b b-print) #(= t %) size)
+            (do
+              (ca/<! (ca/timeout 1000))
+              (show-result b-print turn t (count @log)))
 
-          (do
-            ;; 処理継続（手番交代）
-            (ca/<! (ca/timeout 1000))
+            (do
+              ;; 処理継続（手番交代）
+              (ca/<! (ca/timeout 1000))
 
-            (recur
-             (inc cnt)
-             (com/get_turn_next t)
-             (random-choosing-from-bests (rest current)))
-            ))
-
-        ))))
+              (recur
+               (inc cnt)
+               (com/get_turn_next t)
+               (random-choosing-from-bests (rest current)))
+              ))
+          )))
+    ))
 
 ;;=== Initialize Panels ================
 
@@ -233,8 +238,8 @@
              (setAttribute obj "id" (str "td" idx))
 
              (set! (.-onclick obj)
+                   ;; クリックイベント
                    #(cellClickHandler idx board obj log win-pttrns t-start size)))))
-
         ))))
 
 ;;=== Reload Button event ================
@@ -268,16 +273,11 @@
         ;; ボードの情報（特定の手まで、開始時点から「完全読み」を辿る）
         (reset! board (rewind all-board log-undo))
         ;; メッセージ表示
-        (js/alert "undo")
+        (js/alert "[ undo ]")
 
         (if (<= (count @log) 1)
-          ;; ボタン制御
-          (doseq [id ["undo" "quit"]
-                  :let [btn (getHtmlElementById id)]]
-            ;; 色変え
-            (.setAttribute btn "style" "background: #587559")
-            ;; 使用不可
-            (set! (.-disabled btn) false)))
+          ;; ボタン制御：使用不可
+          (set-btn-disabled true))
         ))
 
     (first @board)))
@@ -286,36 +286,6 @@
   (let [board-redo (fnc-undo board log all-board)]
     ;; 再描画
     (print-board board-redo)))
-
-;;=== Quit Button event ================
-
-(defn reload [msg]
-  (do
-    (js/alert msg)
-    (.reload js/window.location)))
-
-(defn quitButtonHandler []
-  (reload "[ quit : O lose ]"))
-
-;;=== Restart Button event ================
-
-(defn restartButtonHandler []
-  (.reload js/window.location))
-
-;;=== Setup Buttons  ================
-
-(defn setupControlButtons [board log board-all]
-  (let [btn1 (getHtmlElementById "undo")
-        btn2 (getHtmlElementById "quit")
-        btn3 (getHtmlElementById "restart")]
-
-    (set! (.-onclick btn1)
-          #(undoButtonHandler board log board-all))
-    (set! (.-onclick btn2)
-          #(quitButtonHandler))
-    (set! (.-onclick btn3)
-          #(restartButtonHandler))
-    ))
 
 ;;=== Computer First Hand  ================
 
@@ -327,51 +297,134 @@
 
     (upd-status board log turn-int current)))
 
-;;=== Initialize  ================
 
-(defn initialize [size]
-  (let [win-pttrns (gen-win-pattern size)
-        init-board (gen-board size)
-        board-lives (gen-board size)
-
-        ;; 完全読み
-        board-perfect
-        [(com/think6
-          win-pttrns init-board board-lives size 1)
-         (com/think6
-          win-pttrns init-board board-lives size 2)]
-
-        ;; 先手決め
-        turn (rand-int 2)
-
-        board (atom (get board-perfect turn))
-        log (atom [])]
-
+(defn common [size board log turn selected-board msg]
+  (let [win-pttrns (gen-win-pattern size)]
+    ;; ボタン制御：使用不可
+    (set-btn-disabled true)
     ;; パネル設定
     (createTableOnGridContainer board size log win-pttrns turn)
-    ;; ボタン制御
-    (setupControlButtons board log (get board-perfect turn))
 
-    ;; ボタン制御
-    (doseq [id ["undo" "quit"]
-            :let [btn (getHtmlElementById id)]]
-      ;; 色変え
-      (.setAttribute btn "style" "background: #587559")
-      ;; 使用不可
-      (set! (.-disabled btn) true))
-
-    (if (= 1 turn)
+    (if (= TURN-HUMAN turn)
       (let [b (first-hand-computer
                board
                log
                (inc turn)
-               (get board-perfect turn))]
-
+               selected-board)]
         ;; 描画
         (print-board b)))
+
+    (js/alert (str msg (conv_to_OX (inc turn))))
     ))
+
+;;=== Quit Button event ================
+
+(defn reload [board-perfect board log]
+  (let [turn (rand-int 2)
+        selected-board (get board-perfect turn)]
+
+    ;;======================
+    ;; リセット
+    (reset! board selected-board)
+    (reset! log [])
+    ;;======================
+
+    (common
+     ;; 数値に明示的に変換しないとバグる
+     (js/parseInt (.-value (getHtmlElementById "size")))
+     board log turn selected-board "restart: ")
+    ))
+
+(defn quitButtonHandler [board log board-perfect]
+  (reload board-perfect board log))
+
+;;=== Restart Button event ================
+
+(defn restartButtonHandler [board log board-perfect]
+  (reload board-perfect board log))
+
+;;=== Setup Buttons  ================
+
+(defn setupControlButtons [board log turn board-perfect]
+  (let [btn1 (getHtmlElementById "undo")
+        btn2 (getHtmlElementById "quit")
+        btn3 (getHtmlElementById "restart")]
+
+    (set! (.-onclick btn1)
+          #(undoButtonHandler
+            board log (get board-perfect turn)))
+    (set! (.-onclick btn2)
+          #(quitButtonHandler board log board-perfect))
+    (set! (.-onclick btn3)
+          #(restartButtonHandler board log board-perfect))
+    ))
+
+(defn gen-board-perfect [size]
+  (let [win-pttrns (gen-win-pattern size)
+        init-board (gen-board size)
+        board-lives (gen-board size)]
+    ;; 完全読み
+    [(com/think6
+      win-pttrns init-board board-lives size TURN-HUMAN)
+     (com/think6
+      win-pttrns init-board board-lives size TURN-COMPUTER)]
+    ))
+
+;;=== Init Pull Down Menu  ================
+
+(defn initSizeMenuPulldown [board log fnc]
+  (let [pulldown (getHtmlElementById "size")]
+    ;; 項目
+    (doseq [num [3 5 7]]
+      (let [opt (.createElement js/document "option")]
+        (set! (.-text opt) num)
+        (set! (.-value opt) num)
+        ;; 追加
+        (.appendChild pulldown opt)))
+
+    ;; onchange：イベント
+    (set!
+     (.-onchange pulldown)
+     #(fnc
+       [(js/parseInt (.-value pulldown)) "resize: " false]
+       ;; 数値に明示的に変換しないとバグる
+       (gen-board-perfect (js/parseInt (.-value pulldown)))
+       board log))
+    ))
+
+(defn set-controllers [[size msg flg] board-perfect board log]
+  (let [turn (rand-int 2)
+        selected-board (get board-perfect turn)]
+
+    ;;======================
+    ;; リセット
+    (reset! board selected-board)
+    (reset! log [])
+    ;;======================
+
+    ;; ボタン制御
+    (setupControlButtons board log turn board-perfect)
+
+    ;; ブルダウン
+    (if flg
+      (initSizeMenuPulldown board log set-controllers))
+
+    (common size board log turn selected-board msg)
+    ))
+
+;;=== Initialize  ================
+
+(let [board (atom nil)
+      log (atom nil)
+      size 3
+      board-perfect (gen-board-perfect size)]
+
+  (defn initialize []
+    (set-controllers
+     [size "start: " true]
+     board-perfect board log)))
 
 ;;==========================
 ;; Start everything
 ;;==========================
-(set! (.-onload js/window) #(initialize 3))
+(set! (.-onload js/window) #(initialize))
