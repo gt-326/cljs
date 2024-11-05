@@ -18,12 +18,14 @@
 ;;
 ;;====================================
 
+;; $ java -cp "cljs.jar:core.async-1.5.648.jar:src" cljs.main --compile marubatsu.core --repl
+
+;;====================================
+
 (require '[cljs.build.api])
 
-(;;cljs.build.api/build
- cljs.build.api/watch
+(cljs.build.api/build
+ ;;cljs.build.api/watch
  "src"
  {:main 'marubatsu.core
-  ;;'marubatsu.core
-  ;;'marubatsu.util
   :output-to "out/main.js"})
