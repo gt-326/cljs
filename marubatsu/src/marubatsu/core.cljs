@@ -329,8 +329,13 @@
     (reset! log [])
     ;;======================
 
+    ;; 処理用の「完全読み」を再設定
+    (set!
+     (.-onclick (getHtmlElementById "undo"))
+     #(undoButtonHandler board log selected-board))
+
     (common
-     ;; 数値に明示的に変換しないとバグる
+     ;; 明示的に、数値に変換しないとバグる
      (js/parseInt (.-value (getHtmlElementById "size")))
      board log turn selected-board "restart: ")
     ))
@@ -387,7 +392,7 @@
      (.-onchange pulldown)
      #(fnc
        [(js/parseInt (.-value pulldown)) "resize: " false]
-       ;; 数値に明示的に変換しないとバグる
+       ;; 明示的に、数値に変換しないとバグる
        (gen-board-perfect (js/parseInt (.-value pulldown)))
        board log))
     ))
