@@ -1,4 +1,4 @@
-(ns chap04.canvas2d)
+(ns ver04.canvas2d)
 
 ;;Canvas2D API をラップしたユーティリティクラス
 

@@ -1,6 +1,5 @@
-(ns chap04.core
-  (:require [chap04.canvas2d :as c2d]
-            [goog.object :as gobj]))
+(ns ver04.core
+  (:require [ver04.canvas2d :as c2d]))
 
 (def CANVAS-WIDTH 640)
 (def CANVAS-HEIGHT 480)

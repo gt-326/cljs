@@ -12,7 +12,7 @@
 ;; │   └─ viper.png
 ;; ├─ out/
 ;; ├─ src/
-;; │   └─ chap00/
+;; │   └─ ver00/
 ;; │        ├─ canvas2d.cljs
 ;; │        └─ core.cljs
 ;; ├─ index.html
@@ -20,10 +20,10 @@
 ;;
 ;;====================================
 
-;; $ java -cp "../cljs.jar:src" cljs.main --compile chap00.core --repl
+;; $ java -cp "../cljs.jar:src" cljs.main --compile ver00.core --repl
 
-;; (require 'chap00.core :reload)
-;; (require 'chap00.canvas2d :reload)
+;; (require 'ver00.core :reload)
+;; (require 'ver00.canvas2d :reload)
 
 ;;====================================
 
@@ -35,4 +35,4 @@
  {:output-to "out/main.js"
 
   ;; chap00 の数字を適宜書き換えてビルドする
-  :main 'chap00.core})
+  :main 'ver04.core})
