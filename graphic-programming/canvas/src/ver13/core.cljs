@@ -130,7 +130,8 @@
                identity
                (map f shots)))]
 
-    ;;(.log js/console (str "aaa: " flg1 " " flg2 " " flg3 " " flg4))
+    (.log js/console
+          (str "aaa: " flg1 " " flg2 " " flg3 " " flg4))
 
     (if (and flg1 flg2 flg3 flg4)
       (do
@@ -186,7 +187,7 @@
   (js/window.addEventListener
    "load"
    (fn []
-     (let [viper (c/Viper. ctx 0 0 IMG-VIPER)
+     (let [viper (c/Viper. ctx 0 0 IMG-VIPER 3 DEGREE-DIR-UP)
            maxShotCnt 10
 
            enemies
@@ -194,7 +195,7 @@
             (repeatedly
              10
              #(c/Enemy. ctx 0 0
-                        IMG-ENEMY (- DEGREE-DIR-UP 180))))
+                        IMG-ENEMY 1 (- DEGREE-DIR-UP 180))))
 
            scene (s/SceneManager.)]
 

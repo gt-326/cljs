@@ -29,6 +29,18 @@
       (< (+ (.-x (.-position obj)) (.-width obj)) 0)
       (> (+ (.-x (.-position obj)) (.-width obj)) w)))
 
+(defn calc [h w obj]
+  (let [shot_speed (.-speed obj)
+        x (.-x (.-position obj))
+        y (.-y (.-position obj))]
+
+    [ ;; 座標を更新する
+     (+ x (* (.-x (.-vector obj)) shot_speed))
+     (+ y (* (.-y (.-vector obj)) shot_speed))
+     ;; 枠からはみ出たら、無効にする
+     (if (outOfCanvas? h w obj) 0 1)]
+    ))
+
 ;;===========================
 ;; Class
 ;;===========================
@@ -48,7 +60,7 @@
     ))
 
 ;; キャラクター管理のための基幹クラス
-(defn Character [ctx x y life imagePath]
+(defn Character [ctx x y life imagePath speed]
   ;; constructor
   (let [img (js/Image.)]
     (this-as this
@@ -56,14 +68,16 @@
       (set! (.-ctx this) ctx)
       (set! (.-life this) life)
 
-      ;; アングル（ラジアン）
-      (set! (.-angle this) (util/degToRed 270))
+      (set! (.-speed this) speed)
 
-      ;; 画像
+      ;; アングル（ラジアン）
+      ;;(set! (.-angle this) (util/degToRed 270))
+
+      ;; 画像 ====================================
+      (set! (.-ready this) false)
+
       (set! (.-src img) imagePath)
       (set! (.-image this) img)
-
-      (set! (.-ready this) false)
 
       (.addEventListener
        (.-image this)
@@ -75,27 +89,33 @@
 
            (set! (.-ready this) true)
            )))
+      ;;=========================================
+
       ;; 継承させるためには、ここに this を置かないといけないみたい
       this
       )))
 
 ;; viper クラス
-(defn Viper [ctx x y imagePath]
+(defn Viper [ctx x y imagePath speed degrees]
   ;; extend
   (gobj/extend
       (.-prototype Viper)
-    (.-prototype Character))
+      (.-prototype Character))
 
   ;; constructor
   (this-as this
-    (.call Character this ctx x y 0 imagePath)
+    ;; 親クラス
+    (.call Character this ctx x y 0 imagePath speed)
+    ;; 親クラスのフィールド「angle」を更新
+    (set! (.-angle this) (util/degToRed degrees))
+    ;; 自身のフィールド「vector」を設定
+    (set! (.-vector this)
+          (Position.
+           (util/genVectorFromDegrees degrees)))
 
     ;; shots
     (set! (.-shotArray this) nil)
     (set! (.-singleShotArray this) nil)
-
-    ;; speed
-    (set! (.-speed this) 3)
 
     ;; ここに this を置く必要はないみたい
     ;;this
@@ -111,23 +131,20 @@
   ;; constructor
   (this-as this
     ;; 親クラス
-    (.call Character this ctx x y 0 imagePath)
+    (.call Character this ctx x y 0 imagePath speed)
     ;; 親クラスのフィールド「angle」を更新
     (set! (.-angle this) (util/degToRed degrees))
     ;; 自身のフィールド「vector」を設定
     (set! (.-vector this)
           (Position.
            (util/genVectorFromDegrees degrees)))
-
-    ;; speed
-    (set! (.-speed this) speed)
-
-    ;; vector を有効にするためには、ここの this を有効にする必要がある
+    ;; vector を有効にするためには、ここの this を有効にする必要がある。
+    ;; コメントアウトすると、loadCheck(): f2 f3 が有効にならない。
     this
     ))
 
 ;; enemy クラス
-(defn Enemy [ctx x y imagePath degrees]
+(defn Enemy [ctx x y imagePath speed degrees]
   ;; extend
   (gobj/extend
       (.-prototype Enemy)
@@ -135,31 +152,17 @@
 
   ;; constructor
   (this-as this
-
-;; ======================
-
-    (.call Character this ctx x y 0 imagePath)
-
-;; ======================
-
+    ;; 親クラス
+    (.call Character this ctx x y 0 imagePath speed)
     ;; 親クラスのフィールド「angle」を更新
     (set! (.-angle this) (util/degToRed degrees))
-
     ;; 自身のフィールド「vector」を設定
     (set! (.-vector this)
           (Position.
            (util/genVectorFromDegrees degrees)))
 
-    ;; speed
-    (set! (.-speed this) 7)
-
     ;; shots
-    ;;(set! (.-shotArray this) nil)
-    (set! (.-singleShotArray this) nil)
-
-    ;; speed
-    (set! (.-speed this) 3)
-
+    (set! (.-shotArray this) nil)
     ;; ここに this を置く必要はないみたい
     ;;this
     ))
@@ -349,7 +352,14 @@
           (.set (.-position this) x y)
           (set! (.-life this) 1))))
 
-(set! (.. Shot -prototype -update)
+(set! (.. Shot -prototype -setShot)
+      (fn [[x y life]]
+        (this-as this
+          (.set (.-position this) x y)
+          (set! (.-life this) life)
+          )))
+
+(set! (.. Shot -prototype -update2)
       (fn [h w rotateFlg]
         (this-as this
           ;; 発射済みのショットであること
@@ -379,21 +389,30 @@
               ))
           )))
 
+(set! (.. Shot -prototype -update)
+      (fn [h w rotateFlg]
+        (this-as this
+          ;; 発射済みのショットであること
+          (if (pos? (.-life this))
+            (do
+              ;; パラメーターを更新
+              (.setShot this (calc h w this))
+              ;; ショット画像を描画する（ローテート有／無）
+              (if rotateFlg
+                (.rotateDraw this)
+                (.draw this))
+              ))
+          )))
+
 ;; [ Enemy.methods ]
 (set! (.. Enemy -prototype -setShotArray)
       (fn [shots]
         (this-as this
           (set! (.-shotArray this) shots))))
 
-(set! (.. Enemy -prototype -setEnemy_)
-      (fn [x y life]
-        (this-as this
-          (set! (.-x (.-position this)) x)
-          (set! (.-y (.-position this)) y)
-          (set! (.-life this) life))))
-
 (set! (.. Enemy -prototype -setEnemy)
-      (fn [x y life & type]
+      (fn ;;[x y life & type]
+        [[x y life & type]]
         (this-as this
           (.set (.-position this) x y)
           (set! (.-life this) life)
@@ -401,7 +420,7 @@
                 (if (empty? type) "default" (first type)))
           )))
 
-(set! (.. Enemy -prototype -update)
+(set! (.. Enemy -prototype -update_)
       (fn [h w sceneFrameCnt]
         (this-as this
           (if (pos? (.-life this))
@@ -431,6 +450,32 @@
 
           )))
 
-(set! (.. Enemy -prototype -fire)
+(set! (.. Enemy -prototype -update)
+      (fn [h w sceneFrameCnt]
+        (this-as this
+          (if (pos? (.-life this))
+            (do
+              (case (.-type this)
+                "default"
+                (do
+                  ;; 攻撃
+                  (if (= sceneFrameCnt 50)
+                    (.fire this this))
+
+                  ;; パラメーターを更新
+                  (.setEnemy this (calc h w this))))
+
+              ;; 敵画像を描画する
+              (.draw this)))
+          )))
+
+(set! (.. Enemy -prototype -fire_)
       (fn [x y shots]
         (shoot x y #(pos? (.-life %)) shots)))
+
+(set! (.. Enemy -prototype -fire)
+      (fn [obj]
+        (shoot
+         (.-x (.-position obj))
+         (.-y (.-position obj))
+         #(pos? (.-life %)) (.-shotArray obj))))

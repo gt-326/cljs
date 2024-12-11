@@ -58,7 +58,8 @@
                               ;;(.log js/console "bbb")
 
                               ;; 敵のステータスを更新する
-                              (.setEnemy enemy x y 1)
+                              ;;(.setEnemy enemy x y 1)
+                              (.setEnemy enemy [x y 1])
 
                               ;; フレーム数をリセット：-1
                               (set! (.-sceneFrameCnt this) 0))
