@@ -7,19 +7,20 @@
 ;; Utilities
 ;;===========================
 
+;; 左右ショットと、正面のショットの両方を扱っている。
 (defn shoot [x y fnc shot_types]
-  (loop [s shot_types]
+  (loop [type shot_types]
     ;; ショットのリスト終端でないこと
-    (if (not (empty? s))
+    (if (not (empty? type))
       ;; 発射されていない、または、
       ;; 枠外に出たショットオブジェクトを探す
-      (if (every? fnc (first s))
+      (if (every? fnc (first type))
         ;; 走査をつづける
-        (recur (rest s))
+        (recur (rest type))
         ;; ショットの発射
         (do
-          (doseq [s2 (first s)]
-            (.set s2 x y))
+          (doseq [s (first type)]
+            (.setShot s [x y 1]))
           true)))))
 
 (defn outOfCanvas? [h w obj]
@@ -346,7 +347,7 @@
           )))
 
 ;; [ Shot.methods ]
-(set! (.. Shot -prototype -set)
+(set! (.. Shot -prototype -set_)
       (fn [x y]
         (this-as this
           (.set (.-position this) x y)
