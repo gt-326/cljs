@@ -34,9 +34,7 @@
 (defn initialize [canvas ctx
                   [viper maxShotCnt]
                   [enemies maxShotCntEnemy]]
-  (let [fncGenShot
-        (fn [img speed] #(c/Shot. ctx 0 0 img speed %))
-
+  (let [
         ;; ショット用パラメータ ============================
         ;; 自機
         f_params (genRadianParams DEGREE-DIR-UP)
@@ -46,24 +44,28 @@
         e_params (genRadianParams (- DEGREE-DIR-UP 90))
         ;;===============================================
 
+        fncGenShot
+        (fn [img speed radians]
+          (c/Shot. ctx 0 0 img speed radians))
+
         shots
         (repeatedly
          maxShotCnt
          #(list
-           (c/Shot. ctx 0 0 IMG-SHOT 7 f_params)))
+           (fncGenShot IMG-SHOT 5 f_params)))
 
         singleShots
         (repeatedly
          maxShotCnt
          #(list
-           (c/Shot. ctx 0 0 IMG-SINGLE 7 l_params)
-           (c/Shot. ctx 0 0 IMG-SINGLE 7 r_params)))
+           (fncGenShot IMG-SINGLE 5 l_params)
+           (fncGenShot IMG-SINGLE 5 r_params)))
 
         shotsEnemy
         (repeatedly
          maxShotCntEnemy
          #(list
-           (c/Shot. ctx 0 0 IMG-ENEMY-SHOT 1 e_params)))
+           (fncGenShot IMG-ENEMY-SHOT 1 e_params)))
         ]
 
     ;; 自機ショット設定
@@ -111,8 +113,8 @@
              keyStat animationFrameCnt shotInterval)
 
     ;; ショットの描画
-    (doseq [s (.-shotArray viper)]
-      (.update (first s) CANVAS-HEIGHT CANVAS-WIDTH false))
+    (doseq [[s] (.-shotArray viper)]
+      (.update s CANVAS-HEIGHT CANVAS-WIDTH false))
 
     ;; 左右ショットの描画
     (doseq [[left right] (.-singleShotArray viper)]
@@ -131,9 +133,8 @@
           ;; ショットの状態は、各敵で共有しているので一度だけ。
           (if (zero? @cnt)
             ;; 敵（@enemies）のショットの描画
-            (doseq [s (.-shotArray e)]
-              (.update (first s)
-                       CANVAS-HEIGHT CANVAS-WIDTH false)))
+            (doseq [[s] (.-shotArray e)]
+              (.update s CANVAS-HEIGHT CANVAS-WIDTH false)))
           ;; カウントアップ
           (swap! cnt inc))))
 
