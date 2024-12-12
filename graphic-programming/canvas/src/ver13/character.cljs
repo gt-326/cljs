@@ -7,20 +7,23 @@
 ;; Utilities
 ;;===========================
 
-;; 左右ショットと、正面のショットの両方を扱っている。
-(defn shoot [x y fnc shot_types]
-  (loop [type shot_types]
+;; 左右ショットと、一方向のショットの両方を扱っている。
+(defn shoot [x y fnc shot_type]
+  (loop [shots shot_type]
     ;; ショットのリスト終端でないこと
-    (if (not (empty? type))
+    (if (not (empty? shots))
       ;; 発射されていない、または、
       ;; 枠外に出たショットオブジェクトを探す
-      (if (every? fnc (first type))
+      ;; 左右のショットを別ものとして扱うために、some を用いている。
+      (if (some fnc (first shots))
         ;; 走査をつづける
-        (recur (rest type))
+        (recur (rest shots))
         ;; ショットの発射
         (do
-          (doseq [s (first type)]
-            (.setShot s [x y 1]))
+          (doseq [shot (first shots)]
+            ;; 左右でショットの状態が異なる場合を想定
+            (if (<= (.-life shot) 0)
+              (.setShot shot [x y 1])))
           true)))))
 
 (defn outOfCanvas? [h w obj]
@@ -30,7 +33,7 @@
       (< (+ (.-x (.-position obj)) (.-width obj)) 0)
       (> (+ (.-x (.-position obj)) (.-width obj)) w)))
 
-(defn calc [h w obj]
+(defn calcShotStatus [h w obj]
   (let [shot_speed (.-speed obj)
         x (.-x (.-position obj))
         y (.-y (.-position obj))]
@@ -71,9 +74,6 @@
 
       (set! (.-speed this) speed)
 
-      ;; アングル（ラジアン）
-      ;;(set! (.-angle this) (util/degToRed 270))
-
       ;; 画像 ====================================
       (set! (.-ready this) false)
 
@@ -97,7 +97,7 @@
       )))
 
 ;; viper クラス
-(defn Viper [ctx x y imagePath speed degrees]
+(defn Viper [ctx x y imagePath speed [a v]]
   ;; extend
   (gobj/extend
       (.-prototype Viper)
@@ -107,13 +107,10 @@
   (this-as this
     ;; 親クラス
     (.call Character this ctx x y 0 imagePath speed)
-    ;; 親クラスのフィールド「angle」を更新
-    (set! (.-angle this) (util/degToRed degrees))
-    ;; 自身のフィールド「vector」を設定
-    (set! (.-vector this)
-          (Position.
-           (util/genVectorFromDegrees degrees)))
 
+    ;; 子クラスフィールド設定
+    (set! (.-angle this) a)
+    (set! (.-vector this) v)
     ;; shots
     (set! (.-shotArray this) nil)
     (set! (.-singleShotArray this) nil)
@@ -122,30 +119,8 @@
     ;;this
     ))
 
-;; shot クラス
-(defn Shot [ctx x y imagePath speed degrees]
-  ;; extend
-  (gobj/extend
-      (.-prototype Shot)
-      (.-prototype Character))
-
-  ;; constructor
-  (this-as this
-    ;; 親クラス
-    (.call Character this ctx x y 0 imagePath speed)
-    ;; 親クラスのフィールド「angle」を更新
-    (set! (.-angle this) (util/degToRed degrees))
-    ;; 自身のフィールド「vector」を設定
-    (set! (.-vector this)
-          (Position.
-           (util/genVectorFromDegrees degrees)))
-    ;; vector を有効にするためには、ここの this を有効にする必要がある。
-    ;; コメントアウトすると、loadCheck(): f2 f3 が有効にならない。
-    this
-    ))
-
 ;; enemy クラス
-(defn Enemy [ctx x y imagePath speed degrees]
+(defn Enemy [ctx x y imagePath speed [a v]]
   ;; extend
   (gobj/extend
       (.-prototype Enemy)
@@ -155,17 +130,36 @@
   (this-as this
     ;; 親クラス
     (.call Character this ctx x y 0 imagePath speed)
-    ;; 親クラスのフィールド「angle」を更新
-    (set! (.-angle this) (util/degToRed degrees))
-    ;; 自身のフィールド「vector」を設定
-    (set! (.-vector this)
-          (Position.
-           (util/genVectorFromDegrees degrees)))
 
+    ;; 子クラスフィールド設定
+    (set! (.-angle this) a)
+    (set! (.-vector this) v)
     ;; shots
     (set! (.-shotArray this) nil)
+
     ;; ここに this を置く必要はないみたい
     ;;this
+    ))
+
+;; shot クラス
+(defn Shot [ctx x y imagePath speed [a v]]
+  ;; extend
+  (gobj/extend
+      (.-prototype Shot)
+    (.-prototype Character))
+
+  ;; constructor
+  (this-as this
+    ;; 親クラス
+    (.call Character this ctx x y 0 imagePath speed)
+
+    ;; 子クラスフィールド設定
+    (set! (.-angle this) a)
+    (set! (.-vector this) v)
+
+    ;; vector を有効にするためには、ここの this を有効にする必要がある。
+    ;; コメントアウトすると、loadCheck(): f2 f3 が有効にならない。
+    this
     ))
 
 ;;===========================
@@ -327,11 +321,11 @@
                 ;; インターバル数未満のときは処理をおこなわない
                 (if (>= @animationFrameCnt shotInterval)
                   ;; ショット２種類の処理
-                  (doseq [shot (list
-                                (.-shotArray this)
-                                (.-singleShotArray this))]
+                  (doseq [shot_type (list
+                                     (.-shotArray this)
+                                     (.-singleShotArray this))]
                     ;; ショットのリスト分、ループする
-                    (if (shoot x y #(pos? (.-life %)) shot)
+                    (if (shoot x y #(pos? (.-life %)) shot_type)
                       ;; フレーム数をリセットする
                       (reset! animationFrameCnt -1)))))
 
@@ -347,47 +341,11 @@
           )))
 
 ;; [ Shot.methods ]
-(set! (.. Shot -prototype -set_)
-      (fn [x y]
-        (this-as this
-          (.set (.-position this) x y)
-          (set! (.-life this) 1))))
-
 (set! (.. Shot -prototype -setShot)
       (fn [[x y life]]
         (this-as this
           (.set (.-position this) x y)
           (set! (.-life this) life)
-          )))
-
-(set! (.. Shot -prototype -update2)
-      (fn [h w rotateFlg]
-        (this-as this
-          ;; 発射済みのショットであること
-          (if (pos? (.-life this))
-            (let [shot_speed (.-speed this)
-                  current_x (.-x (.-position this))
-                  current_y (.-y (.-position this))]
-
-              ;;(.log js/console (str "current_y: " current_y))
-
-              ;; 枠（上部）からはみ出たショットを無効化する
-              (if (outOfCanvas? h w this)
-                (set! (.-life this) 0))
-
-              ;; ショットの現在地の座標を更新する
-              (.set (.-position this)
-                    (+ current_x
-                       (* (.-x (.-vector this)) shot_speed))
-                    (+ current_y
-                       (* (.-y (.-vector this)) shot_speed)))
-
-              ;; ショット画像を描画する（ローテート有／無）
-              (if rotateFlg
-                (.rotateDraw this)
-                (.draw this))
-
-              ))
           )))
 
 (set! (.. Shot -prototype -update)
@@ -397,7 +355,7 @@
           (if (pos? (.-life this))
             (do
               ;; パラメーターを更新
-              (.setShot this (calc h w this))
+              (.setShot this (calcShotStatus h w this))
               ;; ショット画像を描画する（ローテート有／無）
               (if rotateFlg
                 (.rotateDraw this)
@@ -421,36 +379,6 @@
                 (if (empty? type) "default" (first type)))
           )))
 
-(set! (.. Enemy -prototype -update_)
-      (fn [h w sceneFrameCnt]
-        (this-as this
-          (if (pos? (.-life this))
-            (let [shot_speed (.-speed this)
-                  x (.-x (.-position this))
-                  y (.-y (.-position this))]
-
-              (case (.-type this)
-                "default"
-                (do
-                  (if (= sceneFrameCnt 50)
-                    ;; 攻撃
-                    (do
-                      ;;(.log js/console (str "ccc: " (count (.-shotArray this))))
-                      (.fire this x y (.-shotArray this))))
-
-                  ;; 現在地の座標を更新する
-                  (.setEnemy this
-                   (+ x (* (.-x (.-vector this)) shot_speed))
-                   (+ y (* (.-y (.-vector this)) shot_speed))
-                   ;; 枠（下部）からはみ出た敵を無効化する
-                   (if (outOfCanvas? h w this) 0 1))
-                  ))
-
-              ;; 敵画像を描画する
-              (.draw this)))
-
-          )))
-
 (set! (.. Enemy -prototype -update)
       (fn [h w sceneFrameCnt]
         (this-as this
@@ -464,15 +392,11 @@
                     (.fire this this))
 
                   ;; パラメーターを更新
-                  (.setEnemy this (calc h w this))))
+                  (.setEnemy this (calcShotStatus h w this))))
 
               ;; 敵画像を描画する
               (.draw this)))
           )))
-
-(set! (.. Enemy -prototype -fire_)
-      (fn [x y shots]
-        (shoot x y #(pos? (.-life %)) shots)))
 
 (set! (.. Enemy -prototype -fire)
       (fn [obj]

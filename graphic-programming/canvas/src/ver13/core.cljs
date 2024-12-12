@@ -5,9 +5,18 @@
 
             [ver13.scene :as s]))
 
-;; Utilities
-
 ;;===========================
+;; Utilities
+;;===========================
+
+(defn genRadianParams [degrees]
+  (list
+   ;; radian
+   (util/degToRed degrees)
+   ;; vector [x, y]
+   (c/Position.
+    (util/genVectorFromDegrees degrees))))
+
 
 (def CANVAS-WIDTH 640)
 (def CANVAS-HEIGHT 480)
@@ -28,19 +37,40 @@
   (let [fncGenShot
         (fn [img speed] #(c/Shot. ctx 0 0 img speed %))
 
+        ;; ショット用パラメータ ============================
+        ;; 自機
+        f_params (genRadianParams DEGREE-DIR-UP)
+        l_params (genRadianParams (- DEGREE-DIR-UP 20))
+        r_params (genRadianParams (+ DEGREE-DIR-UP 20))
+        ;; 敵
+        e_params (genRadianParams (- DEGREE-DIR-UP 90))
+        ;;===============================================
+
         shots
-        (util/myRepeat maxShotCnt (fncGenShot IMG-SHOT 7)
-         (DEGREE-DIR-UP))
+        (repeatedly
+         maxShotCnt
+         #(list
+           (c/Shot. ctx 0 0 IMG-SHOT 7 f_params)))
 
         singleShots
-        (util/myRepeat maxShotCnt (fncGenShot IMG-SINGLE 7)
-         ((- DEGREE-DIR-UP 20) (+ DEGREE-DIR-UP 20)))
+        (repeatedly
+         maxShotCnt
+         #(list
+           (c/Shot. ctx 0 0 IMG-SINGLE 7 l_params)
+           (c/Shot. ctx 0 0 IMG-SINGLE 7 r_params)))
 
         shotsEnemy
-        (util/myRepeat maxShotCntEnemy
-                       (fncGenShot IMG-ENEMY-SHOT 1)
-                       ((- DEGREE-DIR-UP 90)))
+        (repeatedly
+         maxShotCntEnemy
+         #(list
+           (c/Shot. ctx 0 0 IMG-ENEMY-SHOT 1 e_params)))
         ]
+
+    ;; 自機ショット設定
+    (.setShotArray viper shots singleShots)
+    ;; 敵ショット設定
+    (doseq [e @enemies]
+      (.setShotArray e shotsEnemy))
 
     (set! (.-width canvas) CANVAS-WIDTH)
     (set! (.-height canvas) CANVAS-HEIGHT)
@@ -50,13 +80,6 @@
                 (+ CANVAS-HEIGHT 50)
                 (/ CANVAS-WIDTH 2)
                 (- CANVAS-HEIGHT 100))
-
-    (.setShotArray viper shots singleShots)
-
-    ;; 敵
-    (doseq [e @enemies]
-      (.setShotArray e shotsEnemy))
-
     ))
 
 (defn eventSetting [isKeyDown]
@@ -187,21 +210,27 @@
   (js/window.addEventListener
    "load"
    (fn []
-     (let [viper (c/Viper. ctx 0 0 IMG-VIPER 3 DEGREE-DIR-UP)
-           maxShotCnt 10
+     (let [shotCntViper 10
+           viper_params (genRadianParams DEGREE-DIR-UP)
+           viper (c/Viper. ctx 0 0 IMG-VIPER 3 viper_params)
+
+           shotCntEnemy 50
+           enemy_params (genRadianParams (- DEGREE-DIR-UP 180))
 
            enemies
            (atom
             (repeatedly
              10
-             #(c/Enemy. ctx 0 0
-                        IMG-ENEMY 1 (- DEGREE-DIR-UP 180))))
+             (fn []
+               (c/Enemy. ctx 0 0 IMG-ENEMY 2 enemy_params))))
 
-           scene (s/SceneManager.)]
+           scene (s/SceneManager.)
+           ]
 
        ;; 初期化処理を行う
        (initialize canvas ctx
-                   [viper 10] [enemies 50])
+                   [viper shotCntViper]
+                   [enemies shotCntEnemy])
 
        ;; ゲーム処理
        (loadCheck util viper enemies scene isKeyDown
